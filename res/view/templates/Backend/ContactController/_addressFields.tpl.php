@@ -1,0 +1,158 @@
+<?php
+/**
+ * The address block of a form — type + title of the link, then the address
+ * fields. Used by the contact form (optional first address on «add») and
+ * the address modal (add / edit). One place for the fields (Rule 8). Other
+ * modules' new-contact forms render it too, with `Ui\ContactForm::vars()`.
+ *
+ * Address fields post under the `address_` prefix (`address_first_name`, …)
+ * because `first_name` and `title` exist on the contact / the link as well;
+ * the controller strips the prefix before cleaning. Link fields post as
+ * `type_code` and `title`.
+ *
+ * @var \Z77\Module\Contact\Entities\Address $address
+ * @var string $typeCode
+ * @var string $linkTitle
+ * @var list<\Z77\Module\Contact\Entities\AddressType> $types  what the select offers
+ * @var \Z77\Module\Contact\Validators\ContactAddressValidator|null $linkValidator
+ * @var \Z77\Module\Contact\Validators\AddressValidator|null $addressValidator
+ * @var bool $required  whether the block's required fields carry `required` (false = optional block on «add»)
+ * @var string $prefix  the address fields' name prefix (default `address_`; the order's address
+ *                      cards post `ship_addr_…` / `bill_addr_…`, two blocks in one form)
+ * @var bool $withLink  the link fields (type + title) first (default true; false = a document's
+ *                      address snapshot, which has no link)
+ *
+ * `$address` is any object with the address getters (the ten printed fields + `getEmail()` /
+ * `getPhone()`, 2026-10-22, + `getLetterSalutation()`, 2026-11-13) — an `Address` or debtor's
+ * `AddressSnapshot`. E-mail and phone close the block: a document is e-mailed to its billing
+ * address's e-mail. The «Briefanrede» follows the addressee (board «E-Mail-Standard»): how the
+ * mail greets this person.
+ */
+$required  = $required ?? true;
+$prefix    = $prefix ?? 'address_';
+$withLink  = $withLink ?? true;
+$linkValidator    = $linkValidator ?? null;
+$addressValidator = $addressValidator ?? null;
+$req       = $required ? ' required' : '';
+$linkError = function (string $name) use ($linkValidator): string {
+    return $linkValidator !== null && $linkValidator->hasFieldError($name)
+        ? '<small class="be-form__field-error" data-z77-field-error>' . e($linkValidator->getFieldError($name)) . '</small>'
+        : '';
+};
+$addrError = function (string $name) use ($addressValidator): string {
+    return $addressValidator !== null && $addressValidator->hasFieldError($name)
+        ? '<small class="be-form__field-error" data-z77-field-error>' . e($addressValidator->getFieldError($name)) . '</small>'
+        : '';
+};
+$invalid = fn(?object $v, string $name): string => $v !== null && $v->hasFieldError($name) ? 'true' : 'false';
+?>
+<?php if ($withLink): ?>
+<div class="be-form__grid">
+    <div class="be-form__field" data-z77-field-wrapper>
+        <label>Adresstyp</label>
+        <select name="type_code"<?= $req ?> aria-invalid="<?= $invalid($linkValidator, 'type_code') ?>">
+            <?php foreach ($types as $type): ?>
+            <option value="<?= e($type->getCode()) ?>"<?= $typeCode === $type->getCode() ? ' selected' : '' ?>><?= e($type->getLabel()) ?><?= $type->isActive() ? '' : ' (inaktiv)' ?></option>
+            <?php endforeach; ?>
+        </select>
+        <?= raw($linkError('type_code')) ?>
+    </div>
+    <div class="be-form__field" data-z77-field-wrapper>
+        <label>Bezeichnung <small>(unterscheidet zwei Adressen gleichen Typs, z.B. «Lager Ost»)</small></label>
+        <input type="text" name="title" value="<?= e($linkTitle) ?>" maxlength="80" autocomplete="off"
+               aria-invalid="<?= $invalid($linkValidator, 'title') ?>">
+        <?= raw($linkError('title')) ?>
+    </div>
+</div>
+<?php endif; ?>
+<div class="be-form__grid">
+    <div class="be-form__field" data-z77-field-wrapper>
+        <label>Anrede</label>
+        <input type="text" name="<?= e($prefix) ?>salutation" value="<?= e($address->getSalutation()) ?>" maxlength="20" autocomplete="off" placeholder="Herr / Frau / Firma"
+               aria-invalid="<?= $invalid($addressValidator, 'salutation') ?>">
+        <?= raw($addrError('salutation')) ?>
+    </div>
+    <div class="be-form__field" data-z77-field-wrapper>
+        <label>Titel</label>
+        <input type="text" name="<?= e($prefix) ?>title" value="<?= e($address->getTitle()) ?>" maxlength="40" autocomplete="off"
+               aria-invalid="<?= $invalid($addressValidator, 'title') ?>">
+        <?= raw($addrError('title')) ?>
+    </div>
+</div>
+<div class="be-form__grid">
+    <div class="be-form__field" data-z77-field-wrapper>
+        <label>Vorname</label>
+        <input type="text" name="<?= e($prefix) ?>first_name" value="<?= e($address->getFirstName()) ?>" maxlength="70" autocomplete="off"
+               aria-invalid="<?= $invalid($addressValidator, 'first_name') ?>">
+        <?= raw($addrError('first_name')) ?>
+    </div>
+    <div class="be-form__field" data-z77-field-wrapper>
+        <label>Name <small>(Nachname oder Firma)</small></label>
+        <input type="text" name="<?= e($prefix) ?>name" value="<?= e($address->getName()) ?>" maxlength="70" autocomplete="off"<?= $req ?>
+               aria-invalid="<?= $invalid($addressValidator, 'name') ?>">
+        <?= raw($addrError('name')) ?>
+    </div>
+</div>
+<div class="be-form__grid">
+    <div class="be-form__field" data-z77-field-wrapper>
+        <label>Briefanrede</label>
+        <input type="text" name="<?= e($prefix) ?>letter_salutation" value="<?= e($address->getLetterSalutation()) ?>" maxlength="120" autocomplete="off" placeholder="z.B. Sehr geehrter Herr Meier"
+               aria-invalid="<?= $invalid($addressValidator, 'letter_salutation') ?>">
+        <?= raw($addrError('letter_salutation')) ?>
+    </div>
+    <p class="be-form__hint">Wie ein E-Mail an diese Adresse grüsst. Leer: «Guten Tag Herr Meier» (Anrede und Name), ohne Name «Guten Tag».</p>
+</div>
+<div class="be-form__field" data-z77-field-wrapper>
+    <label>Adresszusatz <small>(Abteilung, c/o)</small></label>
+    <input type="text" name="<?= e($prefix) ?>address_row" value="<?= e($address->getAddressRow()) ?>" maxlength="120" autocomplete="off"
+           aria-invalid="<?= $invalid($addressValidator, 'address_row') ?>">
+    <?= raw($addrError('address_row')) ?>
+</div>
+<div class="be-form__grid">
+    <div class="be-form__field" data-z77-field-wrapper>
+        <label>Strasse</label>
+        <input type="text" name="<?= e($prefix) ?>street" value="<?= e($address->getStreet()) ?>" maxlength="120" autocomplete="off"<?= $req ?>
+               aria-invalid="<?= $invalid($addressValidator, 'street') ?>">
+        <?= raw($addrError('street')) ?>
+    </div>
+    <div class="be-form__field" data-z77-field-wrapper>
+        <label>Nr.</label>
+        <input type="text" name="<?= e($prefix) ?>house_no" value="<?= e($address->getHouseNo()) ?>" maxlength="16" autocomplete="off"
+               aria-invalid="<?= $invalid($addressValidator, 'house_no') ?>">
+        <?= raw($addrError('house_no')) ?>
+    </div>
+</div>
+<div class="be-form__grid">
+    <div class="be-form__field" data-z77-field-wrapper>
+        <label>PLZ</label>
+        <input type="text" name="<?= e($prefix) ?>zip" value="<?= e($address->getZip()) ?>" maxlength="16" autocomplete="off"<?= $req ?>
+               aria-invalid="<?= $invalid($addressValidator, 'zip') ?>">
+        <?= raw($addrError('zip')) ?>
+    </div>
+    <div class="be-form__field" data-z77-field-wrapper>
+        <label>Ort</label>
+        <input type="text" name="<?= e($prefix) ?>city" value="<?= e($address->getCity()) ?>" maxlength="70" autocomplete="off"<?= $req ?>
+               aria-invalid="<?= $invalid($addressValidator, 'city') ?>">
+        <?= raw($addrError('city')) ?>
+    </div>
+    <div class="be-form__field" data-z77-field-wrapper>
+        <label>Land <small>(ISO, z.B. CH)</small></label>
+        <input type="text" name="<?= e($prefix) ?>country" value="<?= e($address->getCountry()) ?>" maxlength="2" autocomplete="off"<?= $req ?>
+               aria-invalid="<?= $invalid($addressValidator, 'country') ?>">
+        <?= raw($addrError('country')) ?>
+    </div>
+</div>
+<div class="be-form__grid">
+    <div class="be-form__field" data-z77-field-wrapper>
+        <label>E-Mail <small>(Belege an diese Adresse gehen hierhin)</small></label>
+        <input type="email" name="<?= e($prefix) ?>email" value="<?= e($address->getEmail()) ?>" maxlength="190" autocomplete="off"
+               aria-invalid="<?= $invalid($addressValidator, 'email') ?>">
+        <?= raw($addrError('email')) ?>
+    </div>
+    <div class="be-form__field" data-z77-field-wrapper>
+        <label>Telefon</label>
+        <input type="tel" name="<?= e($prefix) ?>phone" value="<?= e($address->getPhone()) ?>" maxlength="40" autocomplete="off"
+               aria-invalid="<?= $invalid($addressValidator, 'phone') ?>">
+        <?= raw($addrError('phone')) ?>
+    </div>
+</div>

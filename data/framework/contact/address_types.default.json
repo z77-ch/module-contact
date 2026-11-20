@@ -1,0 +1,32 @@
+[
+    {
+        "id": 1,
+        "code": "main",
+        "label": "Hauptadresse",
+        "active": true
+    },
+    {
+        "id": 2,
+        "code": "invoice",
+        "label": "Rechnungsadresse",
+        "active": true
+    },
+    {
+        "id": 3,
+        "code": "delivery",
+        "label": "Lieferadresse",
+        "active": true
+    },
+    {
+        "id": 4,
+        "code": "regional",
+        "label": "Regionaladresse",
+        "active": true
+    },
+    {
+        "id": 5,
+        "code": "newsletter",
+        "label": "Newsletter",
+        "active": true
+    }
+]
